@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance Calculator</title>
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/300.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/400.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/600.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5/700.css" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #0b1120; color: #e2e8f0; padding: 20px; min-height: 100vh; }
+  .container { max-width: 900px; margin: 0 auto; }
+
+  h2 { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+  .subtitle { font-size: 0.82rem; color: #64748b; margin-bottom: 24px; }
+
+  /* Tab Navigation */
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; background: rgba(30,41,59,0.6); border-radius: 14px; padding: 5px; }
+  .tab-btn {
+    flex: 1; padding: 12px 16px; border: none; background: transparent; color: #94a3b8;
+    font-size: 0.85rem; font-weight: 600; border-radius: 10px; cursor: pointer; transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+  }
+  .tab-btn:hover { color: #e2e8f0; }
+  .tab-btn.active { background: linear-gradient(135deg, #6366f1, #818cf8); color: #fff; box-shadow: 0 4px 15px rgba(99,102,241,0.3); }
+
+  .panel { display: none; animation: fadeIn 0.4s ease; }
+  .panel.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Controls Grid */
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .control-group { background: rgba(30,41,59,0.5); border: 1px solid rgba(99,102,241,0.1); border-radius: 14px; padding: 16px 18px; }
+  .control-group label { display: block; font-size: 0.7rem; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .control-group .value { font-size: 1.2rem; font-weight: 700; color: #818cf8; margin-bottom: 10px; }
+  .control-group input[type=range] {
+    width: 100%; accent-color: #818cf8; cursor: pointer; height: 6px;
+    -webkit-appearance: none; appearance: none; background: #1e293b; border-radius: 3px; outline: none;
+  }
+  .control-group input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #a78bfa); border: 3px solid #0b1120;
+    box-shadow: 0 0 10px rgba(99,102,241,0.4); cursor: pointer;
+  }
+  .control-group input[type=range]::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #a78bfa); border: 3px solid #0b1120;
+    box-shadow: 0 0 10px rgba(99,102,241,0.4); cursor: pointer;
+  }
+
+  /* Stats Cards */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat { border-radius: 14px; padding: 18px 16px; text-align: center; position: relative; overflow: hidden; }
+  .stat::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 14px; opacity: 0.08; }
+  .stat.principal { background: rgba(100,116,139,0.15); border: 1px solid rgba(100,116,139,0.2); }
+  .stat.principal::before { background: #64748b; }
+  .stat.interest { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2); }
+  .stat.interest::before { background: #34d399; }
+  .stat.total { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); }
+  .stat.total::before { background: #818cf8; }
+  .stat .label { font-size: 0.68rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .stat .amount { font-size: 1.1rem; font-weight: 700; margin-top: 6px; }
+  .stat.principal .amount { color: #94a3b8; }
+  .stat.interest .amount { color: #34d399; }
+  .stat.total .amount { color: #818cf8; }
+
+  /* Loan specific stat */
+  .stat.emi { background: rgba(251,146,60,0.1); border: 1px solid rgba(251,146,60,0.25); }
+  .stat.emi::before { background: #fb923c; }
+  .stat.emi .amount { color: #fb923c; }
+
+  /* Chart */
+  .chart-wrap {
+    background: rgba(15,23,42,0.5); border-radius: 16px; border: 1px solid rgba(99,102,241,0.15);
+    padding: 20px 18px 40px 62px; margin-bottom: 16px; position: relative; height: 280px;
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  .legend { display: flex; gap: 24px; justify-content: center; font-size: 0.75rem; color: #64748b; margin-bottom: 18px; flex-wrap: wrap; }
+  .legend span { display: flex; align-items: center; gap: 7px; }
+  .legend .dot { width: 12px; height: 12px; border-radius: 3px; }
+  .dot.p { background: #475569; }
+  .dot.i { background: #34d399; }
+  .dot.emi { background: #fb923c; }
+
+  .insight {
+    background: rgba(52,211,153,0.06); border: 1px solid rgba(52,211,153,0.15);
+    border-radius: 14px; padding: 16px 20px; font-size: 0.83rem; color: #a7f3d0; line-height: 1.7;
+  }
+  .insight.loan-insight {
+    background: rgba(251,146,60,0.06); border-color: rgba(251,146,60,0.15); color: #fed7aa;
+  }
+
+  /* Breakdown Table */
+  .breakdown-wrap {
+    background: rgba(30,41,59,0.4); border: 1px solid rgba(99,102,241,0.1);
+    border-radius: 14px; overflow: hidden; margin-top: 16px; max-height: 340px; overflow-y: auto;
+  }
+  .breakdown-wrap::-webkit-scrollbar { width: 6px; }
+  .breakdown-wrap::-webkit-scrollbar-track { background: transparent; }
+  .breakdown-wrap::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  thead { position: sticky; top: 0; z-index: 2; }
+  th { background: rgba(99,102,241,0.15); color: #94a3b8; font-weight: 600; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.08em; padding: 12px 16px; text-align: right; }
+  th:first-child { text-align: left; }
+  td { padding: 11px 16px; text-align: right; color: #cbd5e1; border-bottom: 1px solid rgba(51,65,85,0.4); }
+  td:first-child { text-align: left; color: #94a3b8; }
+  tr:hover td { background: rgba(99,102,241,0.05); }
+
+  .section-title { font-size: 0.85rem; font-weight: 600; color: #94a3b8; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  @media (max-width: 600px) {
+    .controls { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: 1fr; }
+    .chart-wrap { padding: 14px 12px 36px 48px; height: 220px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>💰 Finance Calculator</h2>
+  <p class="subtitle">Compound growth &amp; home loan EMI — all in one place</p>
+
+  <!-- Tab Navigation -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="investment">📈 Investment Growth</button>
+    <button class="tab-btn" data-tab="loan">🏠 Home Loan EMI</button>
+  </div>
+
+  <!-- ==================== INVESTMENT PANEL ==================== -->
+  <div class="panel active" id="panel-investment">
+    <div class="controls">
+      <div class="control-group">
+        <label>Principal Amount</label>
+        <div class="value" id="invPrincipalVal">₹1,00,000</div>
+        <input type="range" id="invPrincipal" min="10000" max="5000000" step="10000" value="100000">
+      </div>
+      <div class="control-group">
+        <label>Annual Interest Rate</label>
+        <div class="value" id="invRateVal">12%</div>
+        <input type="range" id="invRate" min="1" max="30" step="0.5" value="12">
+      </div>
+      <div class="control-group">
+        <label>Time Period</label>
+        <div class="value" id="invYearsVal">20 years</div>
+        <input type="range" id="invYears" min="1" max="50" step="1" value="20">
+      </div>
+      <div class="control-group">
+        <label>Compounding Frequency</label>
+        <div class="value" id="invFreqVal">Monthly</div>
+        <input type="range" id="invFreq" min="0" max="3" step="1" value="2">
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat principal">
+        <div class="label">Principal Invested</div>
+        <div class="amount" id="invStatPrincipal">—</div>
+      </div>
+      <div class="stat interest">
+        <div class="label">Interest Earned</div>
+        <div class="amount" id="invStatInterest">—</div>
+      </div>
+      <div class="stat total">
+        <div class="label">Final Value</div>
+        <div class="amount" id="invStatTotal">—</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="invChart"></canvas>
+    </div>
+    <div class="legend">
+      <span><span class="dot p"></span> Principal</span>
+      <span><span class="dot i"></span> Interest Earned</span>
+    </div>
+    <div class="insight" id="invInsight"></div>
+  </div>
+
+  <!-- ==================== LOAN PANEL ==================== -->
+  <div class="panel" id="panel-loan">
+    <div class="controls">
+      <div class="control-group">
+        <label>Loan Amount</label>
+        <div class="value" id="loanPrincipalVal">₹35,00,000</div>
+        <input type="range" id="loanPrincipal" min="100000" max="20000000" step="100000" value="3500000">
+      </div>
+      <div class="control-group">
+        <label>Annual Interest Rate</label>
+        <div class="value" id="loanRateVal">8.5%</div>
+        <input type="range" id="loanRate" min="5" max="18" step="0.1" value="8.5">
+      </div>
+      <div class="control-group">
+        <label>Loan Tenure</label>
+        <div class="value" id="loanYearsVal">20 years</div>
+        <input type="range" id="loanYears" min="1" max="30" step="1" value="20">
+      </div>
+      <div class="control-group">
+        <label>Down Payment</label>
+        <div class="value" id="loanDownPayVal">₹0</div>
+        <input type="range" id="loanDownPay" min="0" max="5000000" step="50000" value="0">
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat emi">
+        <div class="label">Monthly EMI</div>
+        <div class="amount" id="loanStatEMI">—</div>
+      </div>
+      <div class="stat interest">
+        <div class="label">Total Interest Paid</div>
+        <div class="amount" id="loanStatInterest">—</div>
+      </div>
+      <div class="stat total">
+        <div class="label">Total Payment</div>
+        <div class="amount" id="loanStatTotal">—</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="loanChart"></canvas>
+    </div>
+    <div class="legend">
+      <span><span class="dot p"></span> Principal Balance</span>
+      <span><span class="dot i"></span> Cumulative Interest</span>
+      <span><span class="dot emi"></span> Cumulative EMI Paid</span>
+    </div>
+    <div class="insight loan-insight" id="loanInsight"></div>
+
+    <div class="section-title" style="margin-top: 24px;">📊 Yearly Breakdown</div>
+    <div class="breakdown-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Year</th>
+            <th>Principal Paid</th>
+            <th>Interest Paid</th>
+            <th>Balance</th>
+          </tr>
+        </thead>
+        <tbody id="breakdownBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const freqLabels = ['Annually','Quarterly','Monthly','Daily'];
+const freqValues = [1,4,12,365];
+
+const fmt = n => {
+  const num = Math.round(n);
+  if (num >= 10000000) return '₹' + (num/10000000).toFixed(2) + ' Cr';
+  if (num >= 100000) return '₹' + (num/100000).toFixed(2) + ' L';
+  return '₹' + num.toLocaleString('en-IN');
+};
+const fmtFull = n => '₹' + Math.round(n).toLocaleString('en-IN');
+
+// ======================== TABS ========================
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'loan') updateLoan();
+  });
+});
+
+// ======================== COMPOUND INTEREST ========================
+function compound(P, r, n, t) { return P * Math.pow(1 + r/n, n*t); }
+
+function updateInvestment() {
+  const P  = parseFloat(document.getElementById('invPrincipal').value);
+  const r  = parseFloat(document.getElementById('invRate').value) / 100;
+  const t  = parseInt(document.getElementById('invYears').value);
+  const fi = parseInt(document.getElementById('invFreq').value);
+  const n  = freqValues[fi];
+
+  document.getElementById('invPrincipalVal').textContent = fmtFull(P);
+  document.getElementById('invRateVal').textContent = (r*100).toFixed(1) + '%';
+  document.getElementById('invYearsVal').textContent = t + (t===1?' year':' years');
+  document.getElementById('invFreqVal').textContent = freqLabels[fi];
+
+  const finalVal = compound(P, r, n, t);
+  const interest = finalVal - P;
+  const simpleInterest = P * r * t;
+  const extraVsSimple = interest - simpleInterest;
+  const doubleTime = (Math.log(2) / (n * Math.log(1 + r/n))).toFixed(1);
+
+  document.getElementById('invStatPrincipal').textContent = fmtFull(P);
+  document.getElementById('invStatInterest').textContent  = fmtFull(interest);
+  document.getElementById('invStatTotal').textContent     = fmtFull(finalVal);
+
+  document.getElementById('invInsight').innerHTML =
+    `💡 At ${r*100}% compounded ${freqLabels[fi].toLowerCase()}, your money doubles roughly every <strong>${doubleTime} years</strong>. ` +
+    `Over ${t} years, compounding earns you <strong>${fmtFull(extraVsSimple)} more</strong> than simple interest — that's the snowball effect in action.`;
+
+  drawInvChart(P, r, n, t, finalVal);
+}
+
+function drawInvChart(P, r, n, t, maxVal) {
+  const canvas = document.getElementById('invChart');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width  = rect.width  * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+  ctx.clearRect(0,0,W,H);
+
+  const data = [];
+  for (let y=0; y<=t; y++) data.push(compound(P, r, n, y));
+
+  const pad = {top:10, bottom:4, left:0, right:8};
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top  - pad.bottom;
+
+  const xS = i  => pad.left + (i / t) * cW;
+  const yS = v  => pad.top  + cH - (v / maxVal) * cH;
+
+  // Grid
+  for (let i=0; i<=4; i++) {
+    const y = pad.top + (cH/4)*i;
+    ctx.strokeStyle = 'rgba(99,102,241,0.1)';
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(W-pad.right,y); ctx.stroke();
+    ctx.fillStyle = '#475569';
+    ctx.font = '10px Inter';
+    ctx.textAlign = 'right';
+    ctx.fillText(fmt(maxVal*(1-i/4)), pad.left-6, y+4);
+  }
+
+  // Principal area
+  ctx.beginPath();
+  ctx.moveTo(xS(0), yS(0));
+  for (let i=0;i<=t;i++) ctx.lineTo(xS(i), yS(P));
+  ctx.lineTo(xS(t), yS(0));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(71,85,105,0.4)';
+  ctx.fill();
+
+  // Interest area
+  ctx.beginPath();
+  ctx.moveTo(xS(0), yS(P));
+  for (let i=0;i<=t;i++) ctx.lineTo(xS(i), yS(data[i]));
+  ctx.lineTo(xS(t), yS(P));
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'rgba(52,211,153,0.6)');
+  grad.addColorStop(1,'rgba(52,211,153,0.08)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  for (let i=0;i<=t;i++) {
+    i===0 ? ctx.moveTo(xS(i),yS(data[i])) : ctx.lineTo(xS(i),yS(data[i]));
+  }
+  ctx.strokeStyle = '#34d399';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // X labels
+  const step = Math.max(1, Math.ceil(t/7));
+  ctx.fillStyle = '#475569';
+  ctx.font = '10px Inter';
+  ctx.textAlign = 'center';
+  for (let i=0;i<=t;i+=step) ctx.fillText('Y'+i, xS(i), H+18);
+}
+
+['invPrincipal','invRate','invYears','invFreq'].forEach(id =>
+  document.getElementById(id).addEventListener('input', updateInvestment));
+
+// ======================== HOME LOAN EMI ========================
+function updateLoan() {
+  const P  = parseFloat(document.getElementById('loanPrincipal').value);
+  const down = parseFloat(document.getElementById('loanDownPay').value);
+  const loanAmt = P - down;
+  const annualR = parseFloat(document.getElementById('loanRate').value);
+  const r = annualR / 12 / 100;
+  const years = parseInt(document.getElementById('loanYears').value);
+  const months = years * 12;
+
+  document.getElementById('loanPrincipalVal').textContent = fmtFull(P);
+  document.getElementById('loanRateVal').textContent = annualR.toFixed(1) + '%';
+  document.getElementById('loanYearsVal').textContent = years + (years===1?' year':' years');
+  document.getElementById('loanDownPayVal').textContent = fmtFull(down);
+
+  // EMI calculation
+  let emi;
+  if (r === 0) {
+    emi = loanAmt / months;
+  } else {
+    const factor = Math.pow(1 + r, months);
+    emi = loanAmt * r * factor / (factor - 1);
+  }
+
+  const totalPayment = emi * months;
+  const totalInterest = totalPayment - loanAmt;
+
+  document.getElementById('loanStatEMI').textContent = fmtFull(emi) + ' /mo';
+  document.getElementById('loanStatInterest').textContent = fmtFull(totalInterest);
+  document.getElementById('loanStatTotal').textContent = fmtFull(totalPayment);
+
+  // Build yearly schedule
+  const yearly = [];
+  let balance = loanAmt;
+  let cumInterest = 0;
+  let cumPaid = 0;
+  for (let y=1; y<=years; y++) {
+    let yearPrinc = 0, yearInt = 0;
+    for (let m=0; m<12; m++) {
+      const intPart = balance * r;
+      const princPart = emi - intPart;
+      balance -= princPart;
+      yearPrinc += princPart;
+      yearInt += intPart;
+      if (balance < 0) balance = 0;
+    }
+    cumInterest += yearInt;
+    cumPaid += emi * 12;
+    yearly.push({ year: y, principal: yearPrinc, interest: yearInt, balance, cumInterest, cumPaid });
+  }
+
+  // Populate table
+  const tbody = document.getElementById('breakdownBody');
+  tbody.innerHTML = '';
+  yearly.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>Year ${row.year}</td><td>${fmt(row.principal)}</td><td style="color:#fbbf24">${fmt(row.interest)}</td><td>${fmt(row.balance)}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Insight
+  const interestPercent = ((totalInterest / loanAmt) * 100).toFixed(0);
+  const dailyCost = emi / 30;
+  document.getElementById('loanInsight').innerHTML =
+    `🏠 For a <strong>${fmtFull(loanAmt)}</strong> home loan at ${annualR}% for ${years} years, ` +
+    `your monthly EMI is <strong>${fmtFull(emi)}</strong> (≈ <strong>${fmtFull(dailyCost)}/day</strong>). ` +
+    `You'll pay <strong>${fmtFull(totalInterest)}</strong> in total interest — that's <strong>${interestPercent}%</strong> of the loan amount. ` +
+    `Total cost of your home: <strong>${fmtFull(totalPayment + down)}</strong> (including ₹${down > 0 ? fmtFull(down) + ' down payment' : '0 down payment'}).`;
+
+  drawLoanChart(yearly, loanAmt, totalInterest, totalPayment);
+}
+
+function drawLoanChart(yearly, loanAmt, totalInterest, totalPayment) {
+  const canvas = document.getElementById('loanChart');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width  = rect.width  * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+  ctx.clearRect(0,0,W,H);
+
+  const years = yearly.length;
+  const pad = {top:10, bottom:4, left:0, right:8};
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top  - pad.bottom;
+
+  const maxVal = Math.max(loanAmt, totalPayment);
+
+  const xS = i  => pad.left + (i / years) * cW;
+  const yS = v  => pad.top  + cH - (v / maxVal) * cH;
+
+  // Grid
+  for (let i=0; i<=4; i++) {
+    const y = pad.top + (cH/4)*i;
+    ctx.strokeStyle = 'rgba(99,102,241,0.1)';
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(W-pad.right,y); ctx.stroke();
+    ctx.fillStyle = '#475569';
+    ctx.font = '10px Inter';
+    ctx.textAlign = 'right';
+    ctx.fillText(fmt(maxVal*(1-i/4)), pad.left-6, y+4);
+  }
+
+  // Data arrays
+  const balances = yearly.map(r => r.balance);
+  const cumInts  = yearly.map(r => r.cumInterest);
+  const cumPaid  = yearly.map(r => r.cumPaid);
+
+  // Cumulative EMI paid area
+  ctx.beginPath();
+  ctx.moveTo(xS(0), yS(0));
+  for (let i=0;i<=years-1;i++) ctx.lineTo(xS(i+1), yS(cumPaid[i]));
+  ctx.lineTo(xS(years), yS(0));
+  ctx.closePath();
+  const gradPaid = ctx.createLinearGradient(0,0,0,H);
+  gradPaid.addColorStop(0,'rgba(251,146,60,0.45)');
+  gradPaid.addColorStop(1,'rgba(251,146,60,0.05)');
+  ctx.fillStyle = gradPaid;
+  ctx.fill();
+
+  // Cumulative interest area
+  ctx.beginPath();
+  ctx.moveTo(xS(0), yS(0));
+  for (let i=0;i<=years-1;i++) ctx.lineTo(xS(i+1), yS(cumInts[i]));
+  ctx.lineTo(xS(years), yS(0));
+  ctx.closePath();
+  const gradInt = ctx.createLinearGradient(0,0,0,H);
+  gradInt.addColorStop(0,'rgba(52,211,153,0.5)');
+  gradInt.addColorStop(1,'rgba(52,211,153,0.05)');
+  ctx.fillStyle = gradInt;
+  ctx.fill();
+
+  // Balance line (descending)
+  ctx.beginPath();
+  ctx.moveTo(xS(0), yS(loanAmt));
+  for (let i=0;i<years;i++) ctx.lineTo(xS(i+1), yS(balances[i]));
+  ctx.strokeStyle = '#818cf8';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // Cumulative interest line
+  ctx.beginPath();
+  for (let i=0;i<years;i++) {
+    i===0 ? ctx.moveTo(xS(i+1),yS(cumInts[i])) : ctx.lineTo(xS(i+1),yS(cumInts[i]));
+  }
+  ctx.strokeStyle = '#34d399';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // X labels
+  const step = Math.max(1, Math.ceil(years/7));
+  ctx.fillStyle = '#475569';
+  ctx.font = '10px Inter';
+  ctx.textAlign = 'center';
+  ctx.fillText('Start', xS(0), H+18);
+  for (let i=1;i<=years;i+=step) ctx.fillText('Y'+i, xS(i), H+18);
+}
+
+['loanPrincipal','loanRate','loanYears','loanDownPay'].forEach(id =>
+  document.getElementById(id).addEventListener('input', updateLoan));
+
+// Initial render
+updateInvestment();
+window.addEventListener('resize', () => {
+  const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+  if (activeTab === 'investment') updateInvestment();
+  else updateLoan();
+});
+</script>
+</body>
+</html>
+
